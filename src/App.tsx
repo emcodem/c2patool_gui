@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-dialog";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import JsonTree, { type RevealTarget } from "./JsonTree";
@@ -16,6 +17,11 @@ function App() {
   const [showTrustSettings, setShowTrustSettings] = useState(false);
   const [reveal, setReveal] = useState<RevealTarget | null>(null);
   const [copied, setCopied] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Lets an automated CI test tell "the app booted, but the page is
@@ -82,6 +88,7 @@ function App() {
         <button className="trust-settings-btn" onClick={() => setShowTrustSettings(true)}>
           Trust Sources…
         </button>
+        {appVersion && <span className="app-version">v{appVersion}</span>}
       </header>
 
       {error && <pre className="error">{error}</pre>}

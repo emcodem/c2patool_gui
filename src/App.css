@@ -41,6 +41,12 @@ html, body, #root {
   opacity: 0.8;
 }
 
+.app-version {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.8em;
+  opacity: 0.5;
+}
+
 .trust-overlay {
   position: fixed;
   inset: 0;
