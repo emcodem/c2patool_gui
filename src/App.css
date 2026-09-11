@@ -200,6 +200,110 @@ html, body, #root {
   overflow: auto;
 }
 
+.validation-summary {
+  flex: 0 0 auto;
+  border: 1px solid #8886;
+  border-radius: 6px;
+  padding: 10px 12px;
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 0.85em;
+}
+
+.vs-note {
+  margin: 0 0 10px;
+  opacity: 0.75;
+  font-size: 0.9em;
+}
+
+.vs-note code {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.vs-manifest + .vs-manifest {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #8884;
+}
+
+.vs-manifest-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.vs-manifest-label {
+  font-weight: 600;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.vs-counts {
+  display: flex;
+  gap: 6px;
+}
+
+.vs-count {
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.85em;
+}
+
+.vs-count.vs-failure { background: #c0392b22; color: #c0392b; }
+.vs-count.vs-informational { background: #1565c022; color: #1565c0; }
+.vs-count.vs-success { background: #2e7d3222; color: #2e7d32; }
+
+.vs-clean {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.vs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vs-entry {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  background: #8881;
+}
+
+.vs-entry.vs-failure { border-left-color: #c0392b; }
+.vs-entry.vs-informational { border-left-color: #1565c0; }
+
+.vs-entry.vs-clickable {
+  cursor: pointer;
+}
+
+.vs-entry.vs-clickable:hover {
+  background: #8882;
+}
+
+.vs-entry-head {
+  margin-bottom: 2px;
+}
+
+.vs-code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 600;
+}
+
+.vs-explanation {
+  font-size: 0.92em;
+}
+
+.vs-meaning {
+  font-size: 0.85em;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
 .json-tree-wrap {
   flex: 1 1 auto;
   display: flex;
@@ -249,6 +353,16 @@ html, body, #root {
   background: #8881;
 }
 
+.tree-highlight {
+  animation: tree-flash 1.6s ease-out;
+  border-radius: 4px;
+}
+
+@keyframes tree-flash {
+  0% { background: #ffca2866; }
+  100% { background: transparent; }
+}
+
 .tree-toggle {
   display: inline-block;
   width: 12px;
@@ -273,8 +387,16 @@ html, body, #root {
   font-style: italic;
 }
 
-.v-string { color: #2e7d32; }
-.v-number { color: #1565c0; }
-.v-boolean { color: #8e24aa; }
+.tree-signer {
+  margin-left: auto;
+  padding-left: 16px;
+  opacity: 0.65;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.v-string { color: #a8631a; }
+.v-number { color: #6a4bbc; }
+.v-boolean { color: #00796b; }
 .v-null,
 .v-unknown { opacity: 0.5; }
