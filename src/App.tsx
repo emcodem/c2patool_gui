@@ -5,6 +5,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import JsonTree, { type RevealTarget } from "./JsonTree";
 import TrustSettings from "./TrustSettings";
 import ValidationSummary from "./ValidationSummary";
+import CoverageMap from "./CoverageMap";
 import "./App.css";
 
 function App() {
@@ -85,9 +86,10 @@ function App() {
 
       {error && <pre className="error">{error}</pre>}
 
-      {!error && !loading && report !== null && (
+      {!error && !loading && report !== null && filePath && (
         <>
           <ValidationSummary data={report} onNavigate={navigateTo} />
+          <CoverageMap data={report} filePath={filePath} />
           <JsonTree data={report} reveal={reveal} />
         </>
       )}

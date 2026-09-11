@@ -162,27 +162,30 @@ export default function JsonTree({ data, reveal }: { data: unknown; reveal?: Rev
   const filter = useMemo(() => filterInput.trim().toLowerCase(), [filterInput]);
 
   return (
-    <div className="json-tree-wrap">
-      <div className="json-table-toolbar">
-        <input
-          type="text"
-          placeholder="Filter by field or value…"
-          value={filterInput}
-          onChange={(e) => setFilterInput(e.target.value)}
-        />
+    <details className="json-tree-wrap app-section" open>
+      <summary className="section-title">JSON Viewer</summary>
+      <div className="json-tree-body">
+        <div className="json-table-toolbar">
+          <input
+            type="text"
+            placeholder="Filter by field or value…"
+            value={filterInput}
+            onChange={(e) => setFilterInput(e.target.value)}
+          />
+        </div>
+        <div className="json-tree-scroll">
+          <TreeNode
+            keyLabel={null}
+            value={data}
+            depth={0}
+            path=""
+            filter={filter}
+            forceOpen={filter.length > 0}
+            revealPath={reveal?.path ?? null}
+            revealNonce={reveal?.nonce ?? 0}
+          />
+        </div>
       </div>
-      <div className="json-tree-scroll">
-        <TreeNode
-          keyLabel={null}
-          value={data}
-          depth={0}
-          path=""
-          filter={filter}
-          forceOpen={filter.length > 0}
-          revealPath={reveal?.path ?? null}
-          revealNonce={reveal?.nonce ?? 0}
-        />
-      </div>
-    </div>
+    </details>
   );
 }

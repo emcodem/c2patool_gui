@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use tauri::Manager;
 
+mod bmff;
 mod trust;
 use trust::{get_trust_sources, save_trust_sources};
 
@@ -133,6 +134,25 @@ fn analyze_file(app: tauri::AppHandle, path: String) -> Result<serde_json::Value
 /// ran — as opposed to the WebView process merely staying alive with a
 /// blank/broken page, which a misconfigured CSP could cause without the
 /// process itself crashing.
+/// Resolves a `c2pa.hash.bmff.v2`/`.v3` assertion's `exclusions` array (as
+/// emitted verbatim by c2patool's JSON) into absolute byte ranges within
+/// `path`, so the frontend can render a coverage map. See `bmff.rs` for the
+/// spec-derived box-walking/xpath-matching logic.
+#[tauri::command]
+fn compute_bmff_coverage(
+    path: String,
+    exclusions: Vec<bmff::ExclusionInput>,
+) -> Result<bmff::BmffCoverage, String> {
+    bmff::compute_coverage(&path, &exclusions).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn file_size(path: String) -> Result<u64, String> {
+    std::fs::metadata(&path)
+        .map(|m| m.len())
+        .map_err(|e| format!("failed to stat {path}: {e}"))
+}
+
 #[tauri::command]
 fn frontend_ready() {
     println!("FRONTEND_READY");
@@ -205,6 +225,8 @@ pub fn run() {
             analyze_file,
             get_trust_sources,
             save_trust_sources,
+            compute_bmff_coverage,
+            file_size,
             frontend_ready,
             report_csp_violation
         ])
