@@ -79,18 +79,31 @@ jobs:
         run: |
           $p = Start-Process -FilePath "${{ matrix.built-path }}" -PassThru `
             -RedirectStandardOutput smoke-stdout.log -RedirectStandardError smoke-stderr.log
-          Start-Sleep -Seconds 5
-          if ($p.HasExited) {
-            Write-Error "App exited early (code $($p.ExitCode)) - it likely failed to load its UI"
-            Get-Content smoke-stdout.log, smoke-stderr.log -ErrorAction SilentlyContinue
-            exit 1
+
+          # Poll instead of a single fixed sleep, so a slow-but-fine boot on a
+          # loaded CI runner isn't mistaken for a broken app.
+          $timeoutSeconds = 20
+          $ready = $false
+          for ($i = 0; $i -lt $timeoutSeconds; $i++) {
+            Start-Sleep -Seconds 1
+            if ($p.HasExited) {
+              Write-Error "App exited early (code $($p.ExitCode)) - it likely failed to load its UI"
+              Get-Content smoke-stdout.log, smoke-stderr.log -ErrorAction SilentlyContinue
+              exit 1
+            }
+            $out = Get-Content smoke-stdout.log -ErrorAction SilentlyContinue
+            if ($out -match "FRONTEND_READY") {
+              $ready = $true
+              break
+            }
           }
+
           Stop-Process -Id $p.Id -Force
           $out = Get-Content smoke-stdout.log -ErrorAction SilentlyContinue
           $err = Get-Content smoke-stderr.log -ErrorAction SilentlyContinue
           Write-Host "--- stdout ---"; $out; Write-Host "--- stderr ---"; $err
-          if (-not ($out -match "FRONTEND_READY")) {
-            Write-Error "Frontend never signaled it rendered (FRONTEND_READY missing) - page may be blank/broken"
+          if (-not $ready) {
+            Write-Error "Frontend never signaled it rendered within ${timeoutSeconds}s (FRONTEND_READY missing) - page may be blank/broken"
             exit 1
           }
           if ($err -match "CSP_VIOLATION") {
@@ -105,17 +118,29 @@ jobs:
           chmod +x "${{ matrix.built-path }}"
           "${{ matrix.built-path }}" > smoke-stdout.log 2> smoke-stderr.log &
           APP_PID=$!
-          sleep 5
-          if ! kill -0 $APP_PID 2>/dev/null; then
-            echo "App exited unexpectedly - it likely failed to load its UI"
-            cat smoke-stdout.log smoke-stderr.log
-            exit 1
-          fi
+
+          # Poll instead of a single fixed sleep, so a slow-but-fine boot on a
+          # loaded CI runner isn't mistaken for a broken app.
+          timeout_seconds=20
+          ready=0
+          for i in $(seq 1 $timeout_seconds); do
+            sleep 1
+            if ! kill -0 $APP_PID 2>/dev/null; then
+              echo "App exited unexpectedly - it likely failed to load its UI"
+              cat smoke-stdout.log smoke-stderr.log
+              exit 1
+            fi
+            if grep -q "FRONTEND_READY" smoke-stdout.log 2>/dev/null; then
+              ready=1
+              break
+            fi
+          done
+
           kill $APP_PID
           echo "--- stdout ---"; cat smoke-stdout.log
           echo "--- stderr ---"; cat smoke-stderr.log
-          if ! grep -q "FRONTEND_READY" smoke-stdout.log; then
-            echo "Frontend never signaled it rendered (FRONTEND_READY missing) - page may be blank/broken"
+          if [ "$ready" -ne 1 ]; then
+            echo "Frontend never signaled it rendered within ${timeout_seconds}s (FRONTEND_READY missing) - page may be blank/broken"
             exit 1
           fi
           if grep -q "CSP_VIOLATION" smoke-stderr.log; then
