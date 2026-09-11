@@ -56,29 +56,52 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "${{ matrix.built-path }}" -PassThru
+          $p = Start-Process -FilePath "${{ matrix.built-path }}" -PassThru `
+            -RedirectStandardOutput smoke-stdout.log -RedirectStandardError smoke-stderr.log
           Start-Sleep -Seconds 5
           if ($p.HasExited) {
             Write-Error "App exited early (code $($p.ExitCode)) - it likely failed to load its UI"
+            Get-Content smoke-stdout.log, smoke-stderr.log -ErrorAction SilentlyContinue
             exit 1
           }
-          Write-Host "App still running after 5s - OK"
           Stop-Process -Id $p.Id -Force
+          $out = Get-Content smoke-stdout.log -ErrorAction SilentlyContinue
+          $err = Get-Content smoke-stderr.log -ErrorAction SilentlyContinue
+          Write-Host "--- stdout ---"; $out; Write-Host "--- stderr ---"; $err
+          if (-not ($out -match "FRONTEND_READY")) {
+            Write-Error "Frontend never signaled it rendered (FRONTEND_READY missing) - page may be blank/broken"
+            exit 1
+          }
+          if ($err -match "CSP_VIOLATION") {
+            Write-Error "A Content-Security-Policy violation was reported"
+            exit 1
+          }
+          Write-Host "Frontend rendered and no CSP violations - OK"
 
       - name: Smoke test (macOS)
         if: runner.os == 'macOS'
         run: |
           chmod +x "${{ matrix.built-path }}"
-          "${{ matrix.built-path }}" &
+          "${{ matrix.built-path }}" > smoke-stdout.log 2> smoke-stderr.log &
           APP_PID=$!
           sleep 5
-          if kill -0 $APP_PID 2>/dev/null; then
-            echo "App still running after 5s - OK"
-            kill $APP_PID
-          else
+          if ! kill -0 $APP_PID 2>/dev/null; then
             echo "App exited unexpectedly - it likely failed to load its UI"
+            cat smoke-stdout.log smoke-stderr.log
             exit 1
           fi
+          kill $APP_PID
+          echo "--- stdout ---"; cat smoke-stdout.log
+          echo "--- stderr ---"; cat smoke-stderr.log
+          if ! grep -q "FRONTEND_READY" smoke-stdout.log; then
+            echo "Frontend never signaled it rendered (FRONTEND_READY missing) - page may be blank/broken"
+            exit 1
+          fi
+          if grep -q "CSP_VIOLATION" smoke-stderr.log; then
+            echo "A Content-Security-Policy violation was reported"
+            exit 1
+          fi
+          echo "Frontend rendered and no CSP violations - OK"
 
       - name: Rename artifact
         shell: bash

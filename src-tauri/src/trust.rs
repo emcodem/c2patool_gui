@@ -59,11 +59,14 @@ pub fn merged_pem_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(dir.join("merged-trust-anchors.pem"))
 }
 
+const FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+
 fn fetch_source(source: &str) -> Result<String, String> {
     if source.starts_with("http://") || source.starts_with("https://") {
         ureq::get(source)
+            .timeout(FETCH_TIMEOUT)
             .call()
-            .map_err(|e| format!("request failed: {e}"))?
+            .map_err(|e| format!("could not reach {source} (no internet connection?): {e}"))?
             .into_string()
             .map_err(|e| format!("failed to read response body: {e}"))
     } else {

@@ -128,6 +128,24 @@ fn analyze_file(app: tauri::AppHandle, path: String) -> Result<serde_json::Value
     run_c2patool(&bin_path, trust_pem, &path)
 }
 
+/// Called once by the frontend after it mounts. Its only purpose is to prove
+/// to an automated test (see CI's smoke test) that the bundled JS actually
+/// ran — as opposed to the WebView process merely staying alive with a
+/// blank/broken page, which a misconfigured CSP could cause without the
+/// process itself crashing.
+#[tauri::command]
+fn frontend_ready() {
+    println!("FRONTEND_READY");
+}
+
+/// Called by the frontend's `securitypolicyviolation` listener so a CSP
+/// misconfiguration shows up in the app's own stdout/stderr (and therefore
+/// in CI logs) instead of only being visible in the WebView's own devtools.
+#[tauri::command]
+fn report_csp_violation(directive: String, blocked_uri: String) {
+    eprintln!("CSP_VIOLATION directive={directive} blocked_uri={blocked_uri}");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,13 +199,14 @@ mod tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             analyze_file,
             get_trust_sources,
-            save_trust_sources
+            save_trust_sources,
+            frontend_ready,
+            report_csp_violation
         ])
         .setup(|app| {
             let handle = app.handle().clone();

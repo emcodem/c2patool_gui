@@ -29,7 +29,13 @@ export default function TrustSettings({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     invoke<TrustSource[]>("get_trust_sources")
-      .then(setSources)
+      .then(async (loaded) => {
+        setSources(loaded);
+        // get_trust_sources only loads the saved list; it doesn't report whether
+        // fetching each source currently succeeds. Re-run the fetch/merge here so
+        // failures (e.g. no internet) are always visible, including on first launch.
+        await persist(loaded);
+      })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
   }, []);
@@ -70,9 +76,14 @@ export default function TrustSettings({ onClose }: { onClose: () => void }) {
       <div className="trust-panel" onClick={(e) => e.stopPropagation()}>
         <div className="trust-panel-header">
           <h2>Trust Sources</h2>
-          <button className="trust-close" onClick={onClose}>
-            ✕
-          </button>
+          <div className="trust-panel-actions">
+            <button onClick={() => persist(sources)} disabled={saving || loading}>
+              {saving ? "Refreshing…" : "Refresh"}
+            </button>
+            <button className="trust-close" onClick={onClose}>
+              ✕
+            </button>
+          </div>
         </div>
         <p className="trust-hint">
           PEM files (local path or URL) used as trust anchors when validating manifests. Enabled

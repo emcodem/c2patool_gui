@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
@@ -15,6 +15,21 @@ function App() {
   const [showTrustSettings, setShowTrustSettings] = useState(false);
   const [reveal, setReveal] = useState<RevealTarget | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    // Lets an automated CI test tell "the app booted, but the page is
+    // blank/broken (e.g. a misconfigured CSP)" apart from "it actually
+    // rendered" — see frontend_ready/report_csp_violation in lib.rs.
+    invoke("frontend_ready").catch(() => {});
+    const onViolation = (e: SecurityPolicyViolationEvent) => {
+      invoke("report_csp_violation", {
+        directive: e.violatedDirective,
+        blockedUri: e.blockedURI,
+      }).catch(() => {});
+    };
+    document.addEventListener("securitypolicyviolation", onViolation);
+    return () => document.removeEventListener("securitypolicyviolation", onViolation);
+  }, []);
 
   async function copyJson() {
     if (report === null) return;
