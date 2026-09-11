@@ -201,8 +201,7 @@ jobs:
           name: "Latest (main)"
           body: >-
             Automatically built from the latest commit on `main`
-            (${{ github.sha }}). This is not a stable versioned release —
-            see the tagged releases for those.
+            (${{ github.sha }}).
           files: artifacts/*/*
           draft: false
           prerelease: false
