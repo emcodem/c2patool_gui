@@ -1,0 +1,280 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.toolbar button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #8886;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.trust-settings-btn {
+  margin-left: auto;
+  font-weight: 400 !important;
+  opacity: 0.8;
+}
+
+.trust-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0008;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.trust-panel {
+  background: canvas;
+  color: canvastext;
+  border-radius: 10px;
+  border: 1px solid #8886;
+  width: min(600px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  gap: 12px;
+  box-shadow: 0 10px 40px #0006;
+}
+
+.trust-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trust-panel-header h2 {
+  margin: 0;
+  font-size: 1.1em;
+}
+
+.trust-close {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  opacity: 0.6;
+}
+
+.trust-hint {
+  margin: 0;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.trust-hint code {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.trust-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trust-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #8884;
+  border-radius: 6px;
+}
+
+.trust-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.trust-item-label {
+  font-weight: 600;
+}
+
+.trust-item-source {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.8em;
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trust-item-error {
+  color: #c0392b;
+  font-size: 0.8em;
+  margin-top: 4px;
+}
+
+.trust-remove {
+  border: none;
+  background: none;
+  color: #c0392b;
+  cursor: pointer;
+  font-size: 0.85em;
+  padding: 2px 6px;
+}
+
+.trust-empty {
+  opacity: 0.6;
+  font-size: 0.9em;
+}
+
+.trust-add {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #8884;
+  padding-top: 12px;
+}
+
+.trust-add input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #8886;
+}
+
+.trust-add input:first-child {
+  flex: 0 0 140px;
+}
+
+.trust-add button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #8886;
+  cursor: pointer;
+}
+
+.file-path {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85em;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  opacity: 0.6;
+}
+
+.error {
+  white-space: pre-wrap;
+  color: #c0392b;
+  background: #c0392b1a;
+  padding: 10px;
+  border-radius: 6px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85em;
+  overflow: auto;
+}
+
+.json-tree-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.json-table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex: 0 0 auto;
+}
+
+.json-table-toolbar input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #8886;
+}
+
+.json-tree-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+  border: 1px solid #8886;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.82em;
+}
+
+.tree-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 1px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tree-row-container {
+  cursor: pointer;
+}
+
+.tree-row-container:hover {
+  background: #8881;
+}
+
+.tree-toggle {
+  display: inline-block;
+  width: 12px;
+  flex: 0 0 auto;
+  opacity: 0.6;
+  user-select: none;
+}
+
+.tree-toggle-spacer {
+  display: inline-block;
+  width: 12px;
+  flex: 0 0 auto;
+}
+
+.tree-key {
+  color: #6a6a6a;
+  flex: 0 0 auto;
+}
+
+.tree-summary {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.v-string { color: #2e7d32; }
+.v-number { color: #1565c0; }
+.v-boolean { color: #8e24aa; }
+.v-null,
+.v-unknown { opacity: 0.5; }

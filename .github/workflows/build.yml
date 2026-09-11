@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rust-targets: ""
+            tauri-args: ""
+            artifact-name: C2PA-Inspector-windows-x64.exe
+            built-path: src-tauri/target/release/tauri-app.exe
+          - os: macos-latest
+            rust-targets: "aarch64-apple-darwin,x86_64-apple-darwin"
+            tauri-args: "--target universal-apple-darwin"
+            artifact-name: C2PA-Inspector-macos-universal
+            built-path: src-tauri/target/universal-apple-darwin/release/tauri-app
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build (single portable binary, no installer)
+        run: npm run tauri build -- --no-bundle ${{ matrix.tauri-args }}
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          mkdir -p dist-artifact
+          cp "${{ matrix.built-path }}" "dist-artifact/${{ matrix.artifact-name }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: dist-artifact/${{ matrix.artifact-name }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*/*
+          draft: true
