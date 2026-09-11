@@ -205,5 +205,5 @@ jobs:
             see the tagged releases for those.
           files: artifacts/*/*
           draft: false
-          prerelease: true
-          make_latest: false
+          prerelease: false
+          make_latest: true
