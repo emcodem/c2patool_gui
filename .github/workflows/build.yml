@@ -49,6 +49,9 @@ jobs:
       - name: Build (single portable binary, no installer)
         run: npm run tauri build -- --no-bundle ${{ matrix.tauri-args }}
 
+      - name: Functional test (extract embedded c2patool, analyze a real sample)
+        run: cargo test --manifest-path src-tauri/Cargo.toml embedded_c2patool_analyzes_sample -- --nocapture
+
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

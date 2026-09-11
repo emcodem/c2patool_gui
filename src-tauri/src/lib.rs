@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use tauri::Manager;
 
@@ -22,16 +22,14 @@ static C2PATOOL_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 /// The c2patool binary is embedded in this executable (see the `include_bytes!`
 /// constants above) so the app ships as a single portable file. On first use we
-/// write it out to a per-user cache dir and reuse that extracted copy afterward.
-fn ensure_c2patool(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+/// write it out to `cache_dir/bin` and reuse that extracted copy afterward.
+/// Takes a plain cache directory (rather than an `AppHandle`) so it can be
+/// exercised directly in tests, without a running Tauri app.
+fn ensure_c2patool_at(cache_dir: &Path) -> Result<PathBuf, String> {
     if let Some(p) = C2PATOOL_PATH.get() {
         return Ok(p.clone());
     }
 
-    let cache_dir = app
-        .path()
-        .app_cache_dir()
-        .map_err(|e| format!("failed to resolve cache dir: {e}"))?;
     let bin_dir = cache_dir.join("bin");
     std::fs::create_dir_all(&bin_dir).map_err(|e| format!("failed to create cache dir: {e}"))?;
 
@@ -64,18 +62,29 @@ fn ensure_c2patool(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(dest)
 }
 
-#[tauri::command]
-fn analyze_file(app: tauri::AppHandle, path: String) -> Result<serde_json::Value, String> {
-    let bin_path = ensure_c2patool(&app)?;
+fn ensure_c2patool(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("failed to resolve cache dir: {e}"))?;
+    ensure_c2patool_at(&cache_dir)
+}
 
-    let mut args = vec!["-d".to_string(), path];
+/// Runs the (already-extracted) c2patool binary against `asset_path` with
+/// `-d`, optionally applying a merged trust-anchors PEM, and parses its JSON
+/// report. Pure function (no `AppHandle`) so it can be covered by tests.
+fn run_c2patool(
+    bin_path: &Path,
+    trust_pem: Option<&Path>,
+    asset_path: &str,
+) -> Result<serde_json::Value, String> {
+    let mut args = vec!["-d".to_string(), asset_path.to_string()];
 
     // c2patool's "URL or path" arg parser misreads an absolute Windows path
     // (e.g. `C:\...`) as a URL with scheme `c`, so we run it with its cwd set
     // to the trust file's directory and pass just the filename instead.
-    let trust_pem = trust::merged_pem_path(&app)?;
-    let trust_dir = trust_pem.parent().map(|p| p.to_path_buf());
-    if trust_pem.is_file() {
+    let trust_dir = trust_pem.and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    if let Some(trust_pem) = trust_pem {
         args.push("trust".to_string());
         args.push("--trust_anchors".to_string());
         args.push(
@@ -86,7 +95,7 @@ fn analyze_file(app: tauri::AppHandle, path: String) -> Result<serde_json::Value
         );
     }
 
-    let mut command = std::process::Command::new(&bin_path);
+    let mut command = std::process::Command::new(bin_path);
     command.args(&args);
     if let Some(dir) = trust_dir {
         command.current_dir(dir);
@@ -109,6 +118,64 @@ fn analyze_file(app: tauri::AppHandle, path: String) -> Result<serde_json::Value
     serde_json::from_str::<serde_json::Value>(&stdout_text).map_err(|e| {
         format!("failed to parse c2patool JSON output: {e}\n\nraw output:\n{stdout_text}")
     })
+}
+
+#[tauri::command]
+fn analyze_file(app: tauri::AppHandle, path: String) -> Result<serde_json::Value, String> {
+    let bin_path = ensure_c2patool(&app)?;
+    let trust_pem = trust::merged_pem_path(&app)?;
+    let trust_pem = trust_pem.is_file().then_some(trust_pem.as_path());
+    run_c2patool(&bin_path, trust_pem, &path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Exercises the exact mechanism the app relies on: extracting the
+    /// embedded c2patool binary and running it against a real signed asset.
+    /// This is what actually proves the "single embedded binary" approach
+    /// works on a given OS/arch, as opposed to just compiling.
+    #[test]
+    fn embedded_c2patool_analyzes_sample() {
+        let cache_dir = std::env::temp_dir().join(format!(
+            "c2pa-inspector-test-{}-{:?}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+
+        let bin_path = ensure_c2patool_at(&cache_dir).expect("failed to extract embedded c2patool");
+        assert!(bin_path.is_file(), "extracted binary should exist");
+
+        let sample = Path::new(env!("CARGO_MANIFEST_DIR")).join("../samples/C.jpg");
+        assert!(sample.is_file(), "expected sample at {}", sample.display());
+
+        let result = run_c2patool(&bin_path, None, sample.to_str().unwrap())
+            .expect("c2patool should run and produce parseable JSON");
+
+        assert_eq!(result["validation_state"], "Valid");
+
+        let active_manifest = result["active_manifest"]
+            .as_str()
+            .expect("active_manifest should be a string");
+        let manifest = &result["manifests"][active_manifest];
+        assert_eq!(manifest["signature"]["common_name"], "C2PA Signer");
+
+        let failures = &result["validation_results"]["activeManifest"]["failure"];
+        assert!(
+            failures
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|f| f["code"] == "signingCredential.untrusted"),
+            "expected the known untrusted-signer failure for this test cert"
+        );
+
+        let _ = std::fs::remove_dir_all(&cache_dir);
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
