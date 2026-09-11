@@ -70,15 +70,29 @@ fn analyze_file(app: tauri::AppHandle, path: String) -> Result<serde_json::Value
 
     let mut args = vec!["-d".to_string(), path];
 
+    // c2patool's "URL or path" arg parser misreads an absolute Windows path
+    // (e.g. `C:\...`) as a URL with scheme `c`, so we run it with its cwd set
+    // to the trust file's directory and pass just the filename instead.
     let trust_pem = trust::merged_pem_path(&app)?;
+    let trust_dir = trust_pem.parent().map(|p| p.to_path_buf());
     if trust_pem.is_file() {
         args.push("trust".to_string());
         args.push("--trust_anchors".to_string());
-        args.push(trust_pem.to_string_lossy().into_owned());
+        args.push(
+            trust_pem
+                .file_name()
+                .map(|f| f.to_string_lossy().into_owned())
+                .unwrap_or_else(|| trust_pem.to_string_lossy().into_owned()),
+        );
     }
 
-    let output = std::process::Command::new(&bin_path)
-        .args(&args)
+    let mut command = std::process::Command::new(&bin_path);
+    command.args(&args);
+    if let Some(dir) = trust_dir {
+        command.current_dir(dir);
+    }
+
+    let output = command
         .output()
         .map_err(|e| format!("failed to run c2patool: {e}"))?;
 

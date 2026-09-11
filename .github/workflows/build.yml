@@ -49,6 +49,34 @@ jobs:
       - name: Build (single portable binary, no installer)
         run: npm run tauri build -- --no-bundle ${{ matrix.tauri-args }}
 
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "${{ matrix.built-path }}" -PassThru
+          Start-Sleep -Seconds 5
+          if ($p.HasExited) {
+            Write-Error "App exited early (code $($p.ExitCode)) - it likely failed to load its UI"
+            exit 1
+          }
+          Write-Host "App still running after 5s - OK"
+          Stop-Process -Id $p.Id -Force
+
+      - name: Smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          chmod +x "${{ matrix.built-path }}"
+          "${{ matrix.built-path }}" &
+          APP_PID=$!
+          sleep 5
+          if kill -0 $APP_PID 2>/dev/null; then
+            echo "App still running after 5s - OK"
+            kill $APP_PID
+          else
+            echo "App exited unexpectedly - it likely failed to load its UI"
+            exit 1
+          fi
+
       - name: Rename artifact
         shell: bash
         run: |

@@ -92,11 +92,14 @@ fn rebuild_merged_file(
                     error: None,
                 });
             }
-            Err(e) => statuses.push(TrustSourceStatus {
-                id: s.id.clone(),
-                ok: false,
-                error: Some(e),
-            }),
+            Err(e) => {
+                eprintln!("trust source '{}' ({}) failed: {e}", s.id, s.source);
+                statuses.push(TrustSourceStatus {
+                    id: s.id.clone(),
+                    ok: false,
+                    error: Some(e),
+                });
+            }
         }
     }
 
