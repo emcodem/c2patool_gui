@@ -616,3 +616,94 @@ html, body, #root {
 .v-boolean { color: #00796b; }
 .v-null,
 .v-unknown { opacity: 0.5; }
+
+.pt-root,
+.pt-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pt-children {
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 2px solid #8884;
+}
+
+.pt-node {
+  margin-top: 8px;
+}
+
+.pt-card {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #8881;
+}
+
+.pt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pt-signer {
+  font-weight: 600;
+  font-size: 1.05em;
+}
+
+.pt-edge {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.82em;
+  opacity: 0.7;
+}
+
+.pt-checked-by {
+  outline: 1px dashed currentColor;
+  outline-offset: -1px;
+}
+
+.pt-ai {
+  background: #e6510022;
+  color: #e65100;
+}
+
+.pt-ai-text {
+  color: #e65100;
+}
+
+/* Nested under the claim signer: a separate signature by a named actor. */
+.pt-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px 16px;
+  padding: 4px 10px;
+  border-left: 3px solid #6a1b9a88;
+  border-radius: 0 6px 6px 0;
+  background: #6a1b9a0f;
+  font-size: 0.9em;
+}
+
+.pt-identity-label {
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  background: #6a1b9a22;
+  color: #6a1b9a;
+}
+
+.pt-identity-name {
+  font-weight: 600;
+}
+
+.pt-actions {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 0.88em;
+}
+
+.pt-desc {
+  opacity: 0.75;
+}

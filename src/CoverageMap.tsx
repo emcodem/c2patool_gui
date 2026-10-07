@@ -1,5 +1,6 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { manifestInfo, manifestPath, type Navigate } from "./manifestInfo";
 
 // Mirrors src-tauri/src/bmff.rs's BmffCoverage (see that file for the
 // spec citations behind how these fields are computed).
@@ -145,28 +146,6 @@ function findHashAssertion(assertionStore: Record<string, unknown>) {
   return null;
 }
 
-type Navigate = (path: string) => void;
-
-// Paths use JsonTree's dotted scheme (root "", then `${path}.${key}`), same
-// as findInTree.ts produces for the validation summary.
-const manifestPath = (label: string) => `.manifests.${label}`;
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
-}
-
-// claim_generator_info is an object in v2 claims but an array in some
-// generators' output; v1 claims only carry a free-text claim_generator.
-function productName(claim: Record<string, unknown> | null): string | null {
-  if (!claim) return null;
-  const info = claim["claim_generator_info"];
-  const first = asRecord(Array.isArray(info) ? info[0] : info);
-  if (first && typeof first.name === "string") {
-    return typeof first.version === "string" ? `${first.name} ${first.version}` : first.name;
-  }
-  return typeof claim["claim_generator"] === "string" ? (claim["claim_generator"] as string) : null;
-}
-
 function ManifestHeader({
   manifestLabel,
   manifest,
@@ -180,12 +159,7 @@ function ManifestHeader({
   isActive: boolean;
   onNavigate?: Navigate;
 }) {
-  const signature = asRecord(manifest["signature"]);
-  const claim = asRecord(manifest["claim"]);
-  const signer = typeof signature?.common_name === "string" ? signature.common_name : null;
-  const issuer = typeof signature?.issuer === "string" ? signature.issuer : null;
-  const product = productName(claim);
-  const title = typeof claim?.["dc:title"] === "string" ? (claim["dc:title"] as string) : null;
+  const { signer, issuer, product, title } = manifestInfo(manifest);
 
   const link = (text: string, path: string, className: string) =>
     onNavigate ? (

@@ -7,6 +7,7 @@ import JsonTree, { type RevealTarget } from "./JsonTree";
 import TrustSettings from "./TrustSettings";
 import ValidationSummary from "./ValidationSummary";
 import CoverageMap from "./CoverageMap";
+import ProvenanceTree from "./ProvenanceTree";
 import "./App.css";
 
 function App() {
@@ -96,6 +97,7 @@ function App() {
       {!error && !loading && report !== null && filePath && (
         <>
           <ValidationSummary data={report} onNavigate={navigateTo} />
+          <ProvenanceTree data={report} onNavigate={navigateTo} />
           <CoverageMap data={report} filePath={filePath} onNavigate={navigateTo} />
           <JsonTree data={report} reveal={reveal} />
         </>
