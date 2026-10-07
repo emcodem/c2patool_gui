@@ -652,13 +652,44 @@ html, body, #root {
   font-size: 1.05em;
 }
 
-.pt-edge {
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 0.82em;
-  opacity: 0.7;
+.pt-ingredient-of {
+  margin-bottom: 4px;
+  font-size: 0.85em;
+  opacity: 0.75;
 }
 
-.pt-checked-by {
+.pt-rel {
+  cursor: help;
+  text-decoration: underline dotted;
+}
+
+.pt-targets .coverage-link {
+  font-weight: 600;
+}
+
+.pt-flash {
+  animation: pt-flash 1.6s ease-out;
+}
+
+@keyframes pt-flash {
+  0% { box-shadow: 0 0 0 3px #1565c0aa; }
+  100% { box-shadow: 0 0 0 3px #1565c000; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pt-flash { animation: none; outline: 2px solid #1565c0; }
+}
+
+.pt-section-label {
+  margin-top: 6px;
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* Another party's differing result: same semantic color, dashed to show it isn't yours. */
+.pt-other-result {
   outline: 1px dashed currentColor;
   outline-offset: -1px;
 }
@@ -674,16 +705,42 @@ html, body, #root {
 
 /* Nested under the claim signer: a separate signature by a named actor. */
 .pt-identity {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  gap: 4px;
   margin: 8px 0 4px 16px;
   padding: 4px 10px;
   border-left: 3px solid #6a1b9a88;
   border-radius: 0 6px 6px 0;
   background: #6a1b9a0f;
   font-size: 0.9em;
+}
+
+.pt-identity-head,
+.pt-covers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.pt-covers {
+  font-size: 0.92em;
+}
+
+.pt-covers-label {
+  opacity: 0.75;
+  cursor: help;
+}
+
+.pt-chip {
+  padding: 0 7px;
+  border-radius: 8px;
+  border: 1px solid #6a1b9a55;
+}
+
+.pt-covers-muted .pt-chip {
+  border-style: dashed;
+  opacity: 0.7;
 }
 
 .pt-identity-label {
@@ -699,7 +756,7 @@ html, body, #root {
 }
 
 .pt-actions {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   padding-left: 18px;
   font-size: 0.88em;
 }
