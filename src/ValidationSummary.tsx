@@ -17,19 +17,45 @@ const CATEGORY_META: Record<StatusCategory, { label: string; className: string }
 
 type TrustStatus = "trusted" | "untrusted" | "unknown";
 
+// A manifest can carry two independent signatures: the claim signature (the
+// generator product, judged against the C2PA trust list) and an optional CAWG
+// identity assertion (a named person/organization, judged against separate
+// identity trust anchors). c2patool reports both with the same
+// signingCredential.* codes, so they're told apart by the entry's URL.
+function isCawgEntry(entry: ResultEntry): boolean {
+  return /\/cawg\.identity(__\d+)?$/.test(entry.url ?? "");
+}
+
+const TRUSTED_CODES = ["signingCredential.trusted", "cawg.x509.credential.trusted"];
+const UNTRUSTED_CODES = ["signingCredential.untrusted", "cawg.x509.credential.untrusted"];
+
 // Per spec (see validationCodes.ts): "signingCredential.trusted" is a success
 // code, "signingCredential.untrusted" a failure code. Neither is guaranteed
 // to be present (e.g. trust checking wasn't performed), hence "unknown".
-function trustStatus(results: ManifestResults): TrustStatus {
-  if ((results.success ?? []).some((e) => e.code === "signingCredential.trusted")) return "trusted";
-  if ((results.failure ?? []).some((e) => e.code === "signingCredential.untrusted")) return "untrusted";
+function trustStatus(results: ManifestResults, cawg: boolean): TrustStatus {
+  const relevant = (entries: ResultEntry[] | undefined) =>
+    (entries ?? []).filter((e) => isCawgEntry(e) === cawg);
+  if (relevant(results.success).some((e) => TRUSTED_CODES.includes(e.code))) return "trusted";
+  if (relevant(results.failure).some((e) => UNTRUSTED_CODES.includes(e.code))) return "untrusted";
   return "unknown";
+}
+
+function hasCawgEntries(results: ManifestResults): boolean {
+  return [...(results.success ?? []), ...(results.failure ?? []), ...(results.informational ?? [])].some(
+    isCawgEntry,
+  );
 }
 
 const TRUST_META: Record<TrustStatus, { label: string; className: string }> = {
   trusted: { label: "Trusted signer", className: "vs-success" },
   untrusted: { label: "Untrusted signer", className: "vs-failure" },
   unknown: { label: "Trust unknown", className: "vs-informational" },
+};
+
+const CAWG_TRUST_META: Record<TrustStatus, { label: string; className: string }> = {
+  trusted: { label: "CAWG identity trusted", className: "vs-success" },
+  untrusted: { label: "CAWG identity untrusted", className: "vs-failure" },
+  unknown: { label: "CAWG identity: trust unknown", className: "vs-informational" },
 };
 
 // "activeManifest" is c2patool's fixed key for the primary manifest's
@@ -86,6 +112,14 @@ function Entry({
     >
       <div className="vs-entry-head">
         <code className="vs-code">{entry.code}</code>
+        {isCawgEntry(entry) && (
+          <span
+            className="vs-scope-tag"
+            title="Refers to the CAWG identity assertion (named person/organization), not the claim signature"
+          >
+            CAWG identity
+          </span>
+        )}
       </div>
       {entry.explanation && <div className="vs-explanation">{entry.explanation}</div>}
       {spec && <div className="vs-meaning">{spec.meaning}</div>}
@@ -135,7 +169,8 @@ export default function ValidationSummary({
         const noteworthy = [...failures, ...informational];
         const manifestKey = resolveManifestKey(record, manifestLabel);
         const signer = getSigner(record, manifestKey);
-        const trust = trustStatus(results);
+        const trust = trustStatus(results, false);
+        const cawgTrust = hasCawgEntries(results) ? trustStatus(results, true) : null;
 
         return (
           <div key={manifestLabel} className="vs-manifest">
@@ -156,6 +191,11 @@ export default function ValidationSummary({
                 </span>
               )}
               <span className={`vs-count ${TRUST_META[trust].className}`}>{TRUST_META[trust].label}</span>
+              {cawgTrust && (
+                <span className={`vs-count ${CAWG_TRUST_META[cawgTrust].className}`}>
+                  {CAWG_TRUST_META[cawgTrust].label}
+                </span>
+              )}
             </div>
             {noteworthy.length > 0 ? (
               <ul className="vs-list">
