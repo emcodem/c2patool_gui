@@ -96,7 +96,7 @@ function App() {
       {!error && !loading && report !== null && filePath && (
         <>
           <ValidationSummary data={report} onNavigate={navigateTo} />
-          <CoverageMap data={report} filePath={filePath} />
+          <CoverageMap data={report} filePath={filePath} onNavigate={navigateTo} />
           <JsonTree data={report} reveal={reveal} />
         </>
       )}

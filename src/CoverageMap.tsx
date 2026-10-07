@@ -145,14 +145,94 @@ function findHashAssertion(assertionStore: Record<string, unknown>) {
   return null;
 }
 
-function ManifestCoverage({
+type Navigate = (path: string) => void;
+
+// Paths use JsonTree's dotted scheme (root "", then `${path}.${key}`), same
+// as findInTree.ts produces for the validation summary.
+const manifestPath = (label: string) => `.manifests.${label}`;
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
+}
+
+// claim_generator_info is an object in v2 claims but an array in some
+// generators' output; v1 claims only carry a free-text claim_generator.
+function productName(claim: Record<string, unknown> | null): string | null {
+  if (!claim) return null;
+  const info = claim["claim_generator_info"];
+  const first = asRecord(Array.isArray(info) ? info[0] : info);
+  if (first && typeof first.name === "string") {
+    return typeof first.version === "string" ? `${first.name} ${first.version}` : first.name;
+  }
+  return typeof claim["claim_generator"] === "string" ? (claim["claim_generator"] as string) : null;
+}
+
+function ManifestHeader({
   manifestLabel,
-  assertionStore,
-  filePath,
+  manifest,
+  hashKey,
+  isActive,
+  onNavigate,
 }: {
   manifestLabel: string;
+  manifest: Record<string, unknown>;
+  hashKey: string | null;
+  isActive: boolean;
+  onNavigate?: Navigate;
+}) {
+  const signature = asRecord(manifest["signature"]);
+  const claim = asRecord(manifest["claim"]);
+  const signer = typeof signature?.common_name === "string" ? signature.common_name : null;
+  const issuer = typeof signature?.issuer === "string" ? signature.issuer : null;
+  const product = productName(claim);
+  const title = typeof claim?.["dc:title"] === "string" ? (claim["dc:title"] as string) : null;
+
+  const link = (text: string, path: string, className: string) =>
+    onNavigate ? (
+      <button type="button" className={`${className} coverage-link`} onClick={() => onNavigate(path)} title="Show in the JSON tree">
+        {text}
+      </button>
+    ) : (
+      <span className={className}>{text}</span>
+    );
+
+  return (
+    <>
+      <div className="coverage-map-header">
+        <span className="coverage-map-signer" title={issuer ? `Issued by: ${issuer}` : undefined}>
+          {signer ?? "(unknown signer)"}
+        </span>
+        {isActive ? (
+          <span className="vs-count vs-success">active manifest</span>
+        ) : (
+          <span className="vs-count vs-informational">ingredient</span>
+        )}
+      </div>
+      <div className="coverage-map-meta">
+        {product && <span>Product: {product}</span>}
+        {title && <span>Title: {title}</span>}
+        {issuer && <span>Org: {issuer}</span>}
+      </div>
+      <div className="coverage-map-meta">
+        {link(manifestLabel, manifestPath(manifestLabel), "coverage-map-label")}
+        {hashKey && link(hashKey, `${manifestPath(manifestLabel)}.assertion_store.${hashKey}`, "coverage-map-kind")}
+      </div>
+    </>
+  );
+}
+
+function ManifestCoverage({
+  manifestLabel,
+  manifest,
+  assertionStore,
+  filePath,
+  onNavigate,
+}: {
+  manifestLabel: string;
+  manifest: Record<string, unknown>;
   assertionStore: Record<string, unknown>;
   filePath: string;
+  onNavigate?: Navigate;
 }) {
   const [segments, setSegments] = useState<Segment[] | null>(null);
   const [fileSize, setFileSize] = useState<number | null>(null);
@@ -215,10 +295,13 @@ function ManifestCoverage({
 
   return (
     <div className="coverage-map">
-      <div className="coverage-map-header">
-        <span className="coverage-map-label">{manifestLabel}</span>
-        {found && <span className="coverage-map-kind">{found.key}</span>}
-      </div>
+      <ManifestHeader
+        manifestLabel={manifestLabel}
+        manifest={manifest}
+        hashKey={found?.key ?? null}
+        isActive
+        onNavigate={onNavigate}
+      />
       {loading && <div className="coverage-status">Reading file structure…</div>}
       {error && <pre className="coverage-error">{error}</pre>}
       {unsupported && <div className="coverage-status">{unsupported}</div>}
@@ -262,8 +345,51 @@ class CoverageErrorBoundary extends Component<
   }
 }
 
-export default function CoverageMap({ data, filePath }: { data: unknown; filePath: string }) {
+// A manifest's hard binding (c2pa.hash.*) describes the asset as it was when
+// *that* manifest was signed. Only the active manifest was signed over this
+// file; ingredient manifests hashed their own, earlier assets (e.g. the
+// original camera clip), whose bytes aren't in this file — so mapping their
+// exclusions onto this file would be meaningless.
+function IngredientManifestNote({
+  manifestLabel,
+  manifest,
+  assertionStore,
+  onNavigate,
+}: {
+  manifestLabel: string;
+  manifest: Record<string, unknown>;
+  assertionStore: Record<string, unknown>;
+  onNavigate?: Navigate;
+}) {
+  const found = findHashAssertion(assertionStore);
+  return (
+    <div className="coverage-map">
+      <ManifestHeader
+        manifestLabel={manifestLabel}
+        manifest={manifest}
+        hashKey={found?.key ?? null}
+        isActive={false}
+        onNavigate={onNavigate}
+      />
+      <div className="coverage-status">
+        Ingredient manifest — its hash covers the ingredient asset as it was when this manifest was signed,
+        not the bytes of this file, so it can't be mapped here.
+      </div>
+    </div>
+  );
+}
+
+export default function CoverageMap({
+  data,
+  filePath,
+  onNavigate,
+}: {
+  data: unknown;
+  filePath: string;
+  onNavigate?: Navigate;
+}) {
   if (typeof data !== "object" || data === null) return null;
+  const activeManifest = (data as Record<string, unknown>)["active_manifest"];
   const manifests = (data as Record<string, unknown>)["manifests"];
   if (typeof manifests !== "object" || manifests === null) return null;
 
@@ -271,6 +397,8 @@ export default function CoverageMap({ data, filePath }: { data: unknown; filePat
     (entry): entry is [string, Record<string, unknown>] => typeof entry[1] === "object" && entry[1] !== null,
   );
   if (entries.length === 0) return null;
+  // Active manifest first: it's the only one whose map describes this file.
+  entries.sort(([a], [b]) => Number(b === activeManifest) - Number(a === activeManifest));
 
   return (
     <details className="coverage-maps app-section" open>
@@ -279,12 +407,25 @@ export default function CoverageMap({ data, filePath }: { data: unknown; filePat
         {entries.map(([label, manifest]) => {
           const assertionStore = manifest["assertion_store"];
           if (typeof assertionStore !== "object" || assertionStore === null) return null;
+          if (typeof activeManifest === "string" && label !== activeManifest) {
+            return (
+              <IngredientManifestNote
+                key={label}
+                manifestLabel={label}
+                manifest={manifest}
+                assertionStore={assertionStore as Record<string, unknown>}
+                onNavigate={onNavigate}
+              />
+            );
+          }
           return (
             <CoverageErrorBoundary key={label} label={label}>
               <ManifestCoverage
                 manifestLabel={label}
+                manifest={manifest}
                 assertionStore={assertionStore as Record<string, unknown>}
                 filePath={filePath}
+                onNavigate={onNavigate}
               />
             </CoverageErrorBoundary>
           );

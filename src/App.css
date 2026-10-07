@@ -390,6 +390,34 @@ html, body, #root {
   font-family: ui-monospace, Consolas, monospace;
 }
 
+.coverage-map-signer {
+  font-size: 1.05em;
+}
+
+.coverage-map-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.88em;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.coverage-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.coverage-link:hover {
+  text-decoration: underline;
+}
+
 .coverage-map-kind {
   font-weight: 400;
   opacity: 0.6;
